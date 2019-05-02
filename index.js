@@ -21,6 +21,7 @@ var DEFAULT_OPTIONS = {
 	path: '/',
 	generateFilename: nameFunctions.randomFilename,
 	uploadParams: {},
+	processingCallback: null, // (localFilename, mimeType, fileSize) => fileBuffer or stream
 };
 
 function ensureLeadingSlash (filename) {
@@ -128,7 +129,7 @@ S3Adapter.prototype._resolveAbsolutePath = function (file) {
 
 S3Adapter.prototype.uploadFile = function (file, callback) {
 	var self = this;
-	this.options.generateFilename(file, 0, function (err, filename) {
+	this.options.generateFilename(file, 0, async function (err, filename) {
 		if (err) return callback(err);
 
 		// The expanded path of the file on the filesystem.
@@ -146,14 +147,24 @@ S3Adapter.prototype.uploadFile = function (file, callback) {
 
 		debug('Uploading file "%s" to "%s" bucket with mimetype "%s"', absolutePath, bucket, mimetype);
 
-		var fileStream = fs.createReadStream(localpath);
-		fileStream.on('error', function (err) {
-			if (err) return callback(err);
-		});
+		let fileData;
+
+		if (self.options.processingCallback) {
+			try {
+				fileData = await self.options.processingCallback(localpath, mimetype, filesize);
+			} catch (err) {
+				return callback(err);
+			}
+		} else {
+			fileData = fs.createReadStream(localpath);
+			fileData.on('error', function (err) {
+				if (err) return callback(err);
+			});
+		}
 
 		var params = assign({
 			Key: removeLeadingSlash(absolutePath),
-			Body: fileStream,
+			Body: fileData,
 			Bucket: bucket,
 			ContentType: mimetype,
 			ContentLength: filesize,
