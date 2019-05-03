@@ -151,7 +151,10 @@ S3Adapter.prototype.uploadFile = function (file, callback) {
 
 		if (self.options.processingCallback) {
 			try {
-				fileData = await self.options.processingCallback(localpath, mimetype, filesize);
+				const saveData = await self.options.processingCallback(localpath, mimetype, filesize);
+				fileData = saveData.data;
+				mimetype = saveData.mimetype || mimetype;
+				filesize = saveData.filesize || filesize;
 			} catch (err) {
 				return callback(err);
 			}
