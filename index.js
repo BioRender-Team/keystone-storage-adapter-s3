@@ -21,7 +21,7 @@ var DEFAULT_OPTIONS = {
 	path: '/',
 	generateFilename: nameFunctions.randomFilename,
 	uploadParams: {},
-	processingCallback: null, // (localFilename, mimeType, fileSize) => fileBuffer or stream
+	processingCallback: null, // (localFilename, fieldName, mimeType, fileSize) => { data: fileBuffer or stream, mimetype, filesize }
 };
 
 function ensureLeadingSlash (filename) {
@@ -151,7 +151,7 @@ S3Adapter.prototype.uploadFile = function (file, callback) {
 
 		if (self.options.processingCallback) {
 			try {
-				const saveData = await self.options.processingCallback(localpath, mimetype, filesize);
+				const saveData = await self.options.processingCallback(localpath, file.fieldName, mimetype, filesize);
 				fileData = saveData.data;
 				mimetype = saveData.mimetype || mimetype;
 				filesize = saveData.filesize || filesize;
